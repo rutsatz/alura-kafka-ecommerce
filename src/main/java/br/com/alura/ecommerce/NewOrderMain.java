@@ -1,31 +1,26 @@
 package br.com.alura.ecommerce;
 
-import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.serialization.StringSerializer;
-
-import java.io.IOException;
-import java.util.Properties;
+import java.math.BigDecimal;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 public class NewOrderMain {
 
     public static void main(String[] args) throws ExecutionException, InterruptedException {
-        try (var dispatcher = new KafkaDispatcher()) {
+        try (var orderDispatcher = new KafkaDispatcher<Order>();
+             var emailDispatcher = new KafkaDispatcher<String>()) {
             for (int i = 0; i < 10; i++) {
                 // Estou simulando como se fosse o ID do usuário. Então como serão hash diferentes, a execução
                 // vai ficar bem distribuida entre as partições.
-                var key = UUID.randomUUID().toString();
+                var userId = UUID.randomUUID().toString();
+                var orderId = UUID.randomUUID().toString();
+                var amount = BigDecimal.valueOf(Math.random() * 5000 + 1);
+                var order = new Order(userId, orderId, amount);
 
-                var value = key + ",4612,8921398";
-
-                dispatcher.send("ECOMMERCE_NEW_ORDER", key, value);
+                orderDispatcher.send("ECOMMERCE_NEW_ORDER", userId, order);
 
                 var email = "Thank you for your order! We are processing it.";
-                dispatcher.send("ECOMMERCE_SEND_EMAIL", key, email);
+                emailDispatcher.send("ECOMMERCE_SEND_EMAIL", userId, email);
             }
         }
     }
