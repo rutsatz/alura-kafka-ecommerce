@@ -11,12 +11,12 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-class KafkaService implements Closeable {
-    private final KafkaConsumer<String, String> consumer;
+class KafkaService<T> implements Closeable {
+    private final KafkaConsumer<String, T> consumer;
     private final ConsumerFunction parse;
 
-    KafkaService(String groupId, String topic, ConsumerFunction parse) {
-        this(parse, groupId);
+    KafkaService(String groupId, String topic, ConsumerFunction parse, Class<T> type) {
+        this(parse, groupId, type);
 
         // Me inscrevo como um escutador. Eu passo uma lista por parâmetro, com o nome dos tópicos
         // que quero me inscrever. Apesar de passarmos uma lista, nos inscrevemos em somente um tópico,
@@ -33,8 +33,8 @@ class KafkaService implements Closeable {
      * @param topic
      * @param parse
      */
-    public KafkaService(String groupId, Pattern topic, ConsumerFunction parse) {
-        this(parse, groupId);
+    public KafkaService(String groupId, Pattern topic, ConsumerFunction parse, Class<T> type) {
+        this(parse, groupId,type);
 
         // Me inscrevo como um escutador. Eu passo uma lista por parâmetro, com o nome dos tópicos
         // que quero me inscrever. Apesar de passarmos uma lista, nos inscrevemos em somente um tópico,
@@ -42,9 +42,9 @@ class KafkaService implements Closeable {
         this.consumer.subscribe(topic);
     }
 
-    private KafkaService(ConsumerFunction parse, String groupId) {
+    private KafkaService(ConsumerFunction parse, String groupId, Class<T> type) {
         this.parse = parse;
-        this.consumer = new KafkaConsumer<>(properties(groupId));
+        this.consumer = new KafkaConsumer<>(properties(type,groupId));
     }
 
     void run() {
@@ -59,12 +59,12 @@ class KafkaService implements Closeable {
         }
     }
 
-    private static Properties properties(String groupId) {
+    private Properties properties(Class<T> type, String groupId) {
         var properties = new Properties();
         properties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         // Da mesma forma como configuramos os serializadores, temos que configurar os desserializadores.
         properties.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        properties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        properties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, GsonDeserializer.class.getName());
         // Eu também preciso dizer o grupo que o consumidor pertence, para pode controlar e garantir
         // que ele receba todas as mensagens. Nesse caso, usei o próprio nome da classe como o ID do grupo.
         // Se eu tenho somente um serviço com esse grupo, eu recebo todas as mensagens. Se tiver mais alguém
@@ -78,6 +78,9 @@ class KafkaService implements Closeable {
         // o problema de tentar fazer um commit quando o kafka fez um rebalanceamento. Essa é uma configuração
         // bastante utilizada, inclusive por empresas grandes.
         properties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "1");
+        // Configuro o desserializador, dizendo qual a classe. Essa conf é recuperada na hora de montar o
+        // GsonDesserializer.
+        properties.setProperty(GsonDeserializer.TYPE_CONFIG, type.getName());
         return properties;
     }
 

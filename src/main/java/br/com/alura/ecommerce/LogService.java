@@ -11,7 +11,7 @@ public class LogService {
         try (var service = new KafkaService(LogService.class.getSimpleName(),
                 // Assina todos os tópicos, para logar tudo.
                 Pattern.compile("ECOMMERCE.*"),
-                logService::parse)) {
+                logService::parse, String.class)) {
             service.run();
         }
     }

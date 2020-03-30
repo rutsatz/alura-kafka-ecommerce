@@ -3,16 +3,16 @@ package br.com.alura.ecommerce;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 public class FraudDetectorService {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
 
         FraudDetectorService fraudService = new FraudDetectorService();
            try( var service = new KafkaService(FraudDetectorService.class.getSimpleName(), "ECOMMERCE_NEW_ORDER",
-                    fraudService::parse)){
+                    fraudService::parse, Order.class)){
             service.run();
         }
     }
 
-    private void parse(ConsumerRecord<String, String> record) {
+    private void parse(ConsumerRecord<String, Order> record) {
         System.out.println("------------------------------------");
         System.out.println("Procecessing new order, checking for fraud");
         System.out.println(record.key());
